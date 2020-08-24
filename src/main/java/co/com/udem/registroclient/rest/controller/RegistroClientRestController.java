@@ -16,7 +16,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestTemplate;
@@ -50,30 +50,34 @@ public class RegistroClientRestController {
 	private static final Logger log = LoggerFactory.getLogger(RegistroClientRestController.class);
    
    
-    @PutMapping("/autenticar")
+    @PostMapping("/autenticar")
     public String autenticar(@RequestBody AutenticationRequestDTO autenticationRequestDTO) {
     	ServiceInstance serviceInstance=loadBalancer.choose("proyectojava");
          
-        String baseUrl=serviceInstance.getUri().toString();       
+        String baseUrl=serviceInstance.getUri().toString();
+        
         baseUrl=baseUrl+"/auth/signin";
-        ResponseEntity<String> postResponse = restTemplate.postForEntity(baseUrl, autenticationRequestDTO, String.class);
-  
+        ResponseEntity<String> postResponse = restTemplate.postForEntity(baseUrl, autenticationRequestDTO, String.class);        
         Gson g = new Gson();
         AutenticationResponseDTO autenticationResponseDTO = g.fromJson(postResponse.getBody(), AutenticationResponseDTO.class);
         
-        UserToken entity=userTokenRepository.obtenerToken(autenticationResponseDTO.getUsername());
+               
+        userToken.setUsername(autenticationResponseDTO.getUsername());
+        userToken.setToken(autenticationResponseDTO.getToken());
                 
-        if (userTokenRepository.findById(entity.getId()).isPresent())
-        {   entity.setId(entity.getId());
-        	entity.setUsername(entity.getUsername());
-        	entity.setToken(autenticationResponseDTO.getToken());
-            userTokenRepository.save(entity);               
-        } else {     
-	        userToken.setUsername(autenticationResponseDTO.getUsername());
-	        userToken.setToken(autenticationResponseDTO.getToken());
-	        userTokenRepository.save(userToken);
-        }
-        return autenticationResponseDTO.getToken();	
+        if (userTokenRepository.obtenerToken(autenticationResponseDTO.getUsername())!=null) {
+        	userToken=userTokenRepository.obtenerToken(autenticationResponseDTO.getUsername());
+           
+        	userToken.setUsername(userToken.getUsername());
+        	userToken.setToken(autenticationResponseDTO.getToken());
+            userTokenRepository.save(userToken);
+            return autenticationResponseDTO.getToken();
+        }   
+        
+           userTokenRepository.save(userToken);
+        	
+             return autenticationResponseDTO.getToken();
+       	
     }
 
     @GetMapping("/consultarPropiedades/")
